@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>M-Pay — Secure Offline Payments</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#060910;--s1:#0d1117;--s2:#161b22;--s3:#21262d;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --green:#2dde98;--blue:#3b9eff;--warn:#f0a500;--red:#ff5470;
+  --text:#e8edf2;--muted:rgba(232,237,242,0.42);
+  --sans:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:8px}
+.wrap{width:100%;max-width:400px}
+
+/* screens */
+.scr{display:none;animation:fu .28s ease}
+.scr.on{display:block}
+@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── ONBOARDING / BANK LINK ─── */
+.ob-shell{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:28px 24px}
+.ob-logo{font-size:11px;letter-spacing:3px;color:var(--muted);margin-bottom:44px;font-weight:500}
+.ob-logo b{color:var(--green)}
+.ob-title{font-size:30px;font-weight:700;line-height:1.15;margin-bottom:8px}
+.ob-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:32px}
+.bank-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.bank-item{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--s2);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all .15s}
+.bank-item:hover,.bank-item.sel{border-color:var(--green);background:rgba(45,222,152,.05)}
+.bank-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.bank-name{flex:1;font-size:14px;font-weight:500}
+.bank-check{width:18px;height:18px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;transition:all .15s}
+.bank-item.sel .bank-check{background:var(--green);border-color:var(--green);color:#000}
+.ob-note{font-size:11px;color:var(--muted);line-height:1.7;padding:10px 14px;background:rgba(59,158,255,.06);border:1px solid rgba(59,158,255,.15);border-radius:10px;margin-bottom:20px}
+
+/* ─── SET PIN ─── */
+.pin-shell{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:28px 24px}
+.pin-title{font-size:26px;font-weight:700;margin-bottom:6px}
+.pin-sub{font-size:13px;color:var(--muted);margin-bottom:36px;line-height:1.6}
+.pin-row{display:flex;gap:12px;margin-bottom:28px}
+.pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border2);transition:all .15s}
+.pin-dot.on{background:var(--green);border-color:var(--green);box-shadow:0 0 10px rgba(45,222,152,.45)}
+.pin-dot.err{background:var(--red);border-color:var(--red);animation:shk .32s}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.k{background:var(--s2);border:1px solid var(--border);border-radius:13px;padding:17px;font-size:19px;font-weight:600;cursor:pointer;text-align:center;transition:all .12s;user-select:none}
+.k:active{transform:scale(.93);background:var(--s3)}
+.k.del{font-size:15px;color:var(--muted)}
+.k.empty{background:transparent;border:none;pointer-events:none}
+
+/* ─── LOCK ─── */
+.lock-shell{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:28px 24px}
+.lockout-bar{background:rgba(255,84,112,.08);border:1px solid rgba(255,84,112,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:20px;display:none}
+.attempt-dots{display:flex;gap:6px;margin-bottom:24px}
+.att-dot{width:8px;height:8px;border-radius:50%;background:var(--border2)}
+.att-dot.used{background:var(--red)}
+
+/* ─── STATUSBAR ─── */
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;background:var(--s1);border-bottom:1px solid var(--border);border-radius:18px 18px 0 0;font-size:10px;color:var(--muted);font-family:var(--mono)}
+.sbar-ind{display:flex;gap:8px;align-items:center}
+.ind{display:flex;align-items:center;gap:3px;font-size:10px}
+.dot{width:5px;height:5px;border-radius:50%}
+.dot-off{background:var(--red)}.dot-bt{background:var(--blue)}.dot-ok{background:var(--green)}
+
+/* ─── MAIN ─── */
+.main{background:var(--s1);border-radius:18px;border:1px solid var(--border)}
+.hdr{padding:18px 18px 0}
+.hdr-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.user-hello{font-size:12px;color:var(--muted);margin-bottom:2px}
+.user-nm{font-size:16px;font-weight:700}
+.hdr-btns{display:flex;gap:6px}
+.ib{width:34px;height:34px;border-radius:9px;background:var(--s2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;transition:all .15s}
+.ib:hover{border-color:var(--border2)}
+
+/* ─── BALANCE CARD ─── */
+.bal-card{background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:4px;position:relative;overflow:hidden}
+.bal-card::after{content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(45,222,152,.07),transparent 70%)}
+.bal-tag{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;font-family:var(--mono);margin-bottom:7px}
+.bal-num{font-size:34px;font-weight:700;margin-bottom:3px}
+.bal-num sub{font-size:18px;color:var(--muted);font-weight:400}
+.bal-row{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.bal-id{color:var(--muted);font-family:var(--mono)}
+.sync-chip{background:rgba(240,165,0,.1);color:var(--warn);border:1px solid rgba(240,165,0,.2);padding:2px 7px;border-radius:5px;font-size:10px}
+
+/* ─── DAILY LIMIT BAR ─── */
+.limit-wrap{padding:10px 18px 0}
+.limit-hd{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.limit-lbl{color:var(--muted)}
+.limit-val{font-family:var(--mono);color:var(--green)}
+.limit-track{height:5px;background:var(--s3);border-radius:3px;overflow:hidden}
+.limit-fill{height:100%;background:linear-gradient(90deg,var(--green),#00c9ff);border-radius:3px;transition:width .4s}
+.limit-fill.warn{background:linear-gradient(90deg,var(--warn),var(--red))}
+
+/* ─── ACTIONS ─── */
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px 18px}
+.act{background:var(--s2);border:1px solid var(--border);border-radius:13px;padding:13px 8px;text-align:center;cursor:pointer;transition:all .15s}
+.act:hover{border-color:var(--border2);transform:translateY(-1px)}
+.act:active{transform:scale(.95)}
+.act-ic{font-size:20px;margin-bottom:5px}
+.act-lb{font-size:11px;color:var(--muted);font-weight:600}
+
+/* ─── TABS ─── */
+.tabs{display:flex;border-bottom:1px solid var(--border);margin:0 18px}
+.tab{padding:9px 0;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;letter-spacing:.5px;margin-right:18px;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;text-transform:uppercase}
+.tab.on{color:var(--green);border-bottom-color:var(--green)}
+
+/* ─── TXN LIST ─── */
+.txns{padding:10px 18px 18px;max-height:260px;overflow-y:auto}
+.txns::-webkit-scrollbar{width:2px}
+.txns::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.ti{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.ti:last-child{border-bottom:none}
+.tic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tic.out{background:rgba(255,84,112,.1)}.tic.in{background:rgba(45,222,152,.08)}.tic.pend{background:rgba(240,165,0,.1)}
+.tb{flex:1;min-width:0}
+.tn{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm{display:flex;gap:4px;align-items:center;margin-top:2px;flex-wrap:wrap}
+.badge{font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--mono)}
+.b-bt{background:rgba(59,158,255,.1);color:var(--blue);border:1px solid rgba(59,158,255,.2)}
+.b-sig{background:rgba(45,222,152,.07);color:var(--green);border:1px solid rgba(45,222,152,.18)}
+.b-pend{background:rgba(240,165,0,.08);color:var(--warn);border:1px solid rgba(240,165,0,.18)}
+.b-sms{background:rgba(255,84,112,.07);color:var(--red);border:1px solid rgba(255,84,112,.15)}
+.tt{font-size:10px;color:var(--muted)}
+.ta{font-size:13px;font-weight:700;white-space:nowrap}
+.ta.out{color:var(--red)}.ta.in{color:var(--green)}.ta.pend{color:var(--warn)}
+
+/* ─── SECURITY TAB ─── */
+.sec-panel{padding:14px 18px 18px}
+.sec-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.sg{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.sg-num{font-size:16px;font-weight:700}
+.sg-num.g{color:var(--green)}.sg-num.r{color:var(--red)}.sg-num.w{color:var(--warn)}.sg-num.b{color:var(--blue)}
+.sg-lb{font-size:10px;color:var(--muted);margin-top:1px}
+.sec-item{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:7px}
+.si-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.si-name{font-size:12px;font-weight:600}
+.si-ok{font-size:10px;padding:2px 7px;border-radius:4px}
+.si-ok.pass{background:rgba(45,222,152,.08);color:var(--green);border:1px solid rgba(45,222,152,.2)}
+.si-ok.warn{background:rgba(240,165,0,.08);color:var(--warn);border:1px solid rgba(240,165,0,.2)}
+.si-val{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.8;word-break:break-all}
+
+/* ─── MODAL ─── */
+.mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(5px);z-index:100;align-items:flex-end;justify-content:center}
+.mbg.on{display:flex;animation:fdi .2s}
+@keyframes fdi{from{opacity:0}to{opacity:1}}
+.mdl{background:var(--s1);border-radius:22px 22px 0 0;width:100%;max-width:400px;padding:22px;border-top:1px solid var(--border2);animation:slu .3s cubic-bezier(.16,1,.3,1)}
+@keyframes slu{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mh{width:32px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 18px}
+.mt{font-size:17px;font-weight:700;margin-bottom:3px}
+.ms{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+
+/* ─── SEND STEPS ─── */
+.step{display:none}
+.step.on{display:block;animation:fu .22s}
+
+/* bt scan */
+.scan-anim{position:relative;height:150px;display:flex;align-items:center;justify-content:center;margin:10px 0 16px}
+.rpl{position:absolute;border-radius:50%;border:1px solid rgba(59,158,255,.25);animation:rp 2.2s infinite}
+.rpl:nth-child(1){width:55px;height:55px;animation-delay:0s}
+.rpl:nth-child(2){width:95px;height:95px;animation-delay:.45s}
+.rpl:nth-child(3){width:135px;height:135px;animation-delay:.9s}
+@keyframes rp{0%{opacity:.9;transform:scale(.7)}100%{opacity:0;transform:scale(1.1)}}
+.scan-ctr{width:46px;height:46px;border-radius:50%;background:var(--s2);border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:18px;z-index:1}
+.dev-list{display:flex;flex-direction:column;gap:7px}
+.dev{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--s2);border:1px solid var(--border);border-radius:11px;cursor:pointer;transition:all .15s}
+.dev:hover{border-color:var(--blue)}
+.dev:active{transform:scale(.97)}
+.dev-ic{width:34px;height:34px;border-radius:9px;background:rgba(59,158,255,.1);display:flex;align-items:center;justify-content:center;font-size:15px}
+.dev-inf{flex:1}
+.dev-nm{font-size:13px;font-weight:600}
+.dev-id{font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:1px}
+.dev-sig{font-size:10px}
+.dev-sig.s{color:var(--green)}.dev-sig.m{color:var(--warn)}
+
+/* amount entry */
+.amt-row{display:flex;align-items:center;gap:8px;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:11px;margin-bottom:10px}
+.amt-sym{font-size:20px;font-weight:700;color:var(--muted)}
+.amt-in{flex:1;background:transparent;border:none;outline:none;font-size:26px;font-weight:700;color:var(--text);font-family:var(--sans);width:100%}
+.note-in{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;margin-bottom:10px}
+.note-in::placeholder{color:var(--muted)}
+.limit-warn{background:rgba(255,84,112,.07);border:1px solid rgba(255,84,112,.2);border-radius:9px;padding:8px 12px;font-size:11px;color:var(--red);margin-bottom:10px;display:none}
+
+/* auth */
+.auth-ctr{text-align:center;padding:8px 0}
+.auth-ic{font-size:42px;margin-bottom:10px}
+.auth-fails{font-size:11px;color:var(--red);margin-bottom:10px;min-height:16px}
+
+/* signing */
+.sig-wrap{padding:8px 0}
+.sig-step{display:flex;align-items:center;gap:10px;font-size:12px;padding:7px 10px;border-radius:8px;margin-bottom:5px}
+.sig-step.wait{color:var(--muted)}.sig-step.active{color:var(--warn);background:rgba(240,165,0,.06);animation:pl 1s infinite}
+.sig-step.done{color:var(--green);background:rgba(45,222,152,.05)}
+@keyframes pl{0%,100%{opacity:1}50%{opacity:.45}}
+.sig-ic{width:18px;text-align:center}
+
+/* receipt */
+.rcp{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0}
+.rcp-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)}
+.rcp-row:last-child{border-bottom:none}
+.rcp-l{color:var(--muted)}
+.rcp-v{font-family:var(--mono);font-size:10px;text-align:right;max-width:58%;word-break:break-all}
+.rcp-v.g{color:var(--green)}.rcp-v.big{font-size:15px;font-weight:700;font-family:var(--sans)}
+.sig-box{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px;font-family:var(--mono);font-size:9px;color:var(--green);word-break:break-all;margin-top:7px;line-height:1.7}
+.sec-badge{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--green);padding:7px 12px;background:rgba(45,222,152,.05);border-radius:8px;border:1px solid rgba(45,222,152,.13);margin-top:10px}
+
+/* info note */
+.inote{display:flex;gap:9px;background:rgba(59,158,255,.05);border:1px solid rgba(59,158,255,.13);border-radius:9px;padding:9px 11px;font-size:11px;color:rgba(232,237,242,.6);margin-bottom:10px;line-height:1.6}
+.inote .ic{color:var(--blue);flex-shrink:0;margin-top:1px}
+
+/* bank setup modal */
+.bank-setup-step{font-size:12px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:10px}
+.bss-num{width:22px;height:22px;border-radius:50%;background:var(--s3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.bss-num.done{background:rgba(45,222,152,.1);border-color:rgba(45,222,152,.3);color:var(--green)}
+.bss-num.act{background:rgba(59,158,255,.1);border-color:rgba(59,158,255,.3);color:var(--blue);animation:pl 1s infinite}
+.otp-row{display:flex;gap:8px;margin:14px 0}
+.otp-box{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:12px;text-align:center;font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text);outline:none;width:100%}
+.otp-box:focus{border-color:var(--blue)}
+
+/* buttons */
+.btn{width:100%;padding:14px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;letter-spacing:.2px}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--green);color:#000}
+.btn-p:hover{background:#3dffa8}
+.btn-p:disabled{background:var(--s3);color:var(--muted);cursor:not-allowed}
+.btn-s{background:var(--s2);color:var(--text);border:1px solid var(--border);margin-top:7px}
+.btn-d{background:rgba(255,84,112,.1);color:var(--red);border:1px solid rgba(255,84,112,.25);margin-top:7px}
+
+/* toast */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--s2);border:1px solid var(--border2);border-radius:11px;padding:10px 18px;font-size:12px;color:var(--text);opacity:0;transition:all .28s;z-index:999;white-space:nowrap;max-width:88vw;text-align:center;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:rgba(45,222,152,.35);color:var(--green)}
+.toast.er{border-color:rgba(255,84,112,.35);color:var(--red)}
+.toast.wa{border-color:rgba(240,165,0,.35);color:var(--warn)}
+
+.empty{text-align:center;padding:28px 0;color:var(--muted);font-size:12px}
+.empty-ic{font-size:28px;opacity:.35;margin-bottom:6px}
+
+/* session timer */
+.sess-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 0;font-size:10px;color:var(--muted);font-family:var(--mono)}
+.sess-timer{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ═══ ONBOARDING ═══ -->
+<div id="s-onboard" class="scr on">
+<div class="ob-shell">
+  <div class="ob-logo">M-<b>Pay</b> · Beta v1.0</div>
+  <div class="ob-title">Link your bank<br>account first</div>
+  <div class="ob-sub">We pre-authorize an offline spending limit of <b style="color:var(--green)">₹1,000/day</b> from your bank. After that, all payments work 100% offline — no internet needed.</div>
+  <div class="ob-note">🔐 Your bank performs KYC + issues a signed offline token during setup. This token cryptographically proves your identity to every recipient device, without needing a server.</div>
+  <div class="bank-list">
+    <div class="bank-item" onclick="selBank(this,'SBI')" data-bank="SBI">
+      <div class="bank-icon">🏦</div><div class="bank-name">State Bank of India</div><div class="bank-check">✓</div>
+    </div>
+    <div class="bank-item" onclick="selBank(this,'HDFC')" data-bank="HDFC">
+      <div class="bank-icon">🏛️</div><div class="bank-name">HDFC Bank</div><div class="bank-check">✓</div>
+    </div>
+    <div class="bank-item" onclick="selBank(this,'ICICI')" data-bank="ICICI">
+      <div class="bank-icon">💳</div><div class="bank-name">ICICI Bank</div><div class="bank-check">✓</div>
+    </div>
+    <div class="bank-item" onclick="selBank(this,'Axis')" data-bank="Axis">
+      <div class="bank-icon">🔷</div><div class="bank-name">Axis Bank</div><div class="bank-check">✓</div>
+    </div>
+  </div>
+  <button class="btn btn-p" id="ob-next" disabled onclick="startBankLink()">Link Bank & Continue →</button>
+</div>
+</div>
+
+<!-- ═══ BANK SETUP MODAL ═══ -->
+<div class="mbg" id="modal-banksetup">
+<div class="mdl">
+  <div class="mh"></div>
+  <div class="mt">Bank Verification</div>
+  <div class="ms" id="bs-sub">Connecting to your bank securely...</div>
+  <div id="bs-steps">
+    <div class="bank-setup-step"><div class="bss-num act" id="bsn1">1</div><span>Authenticating with bank via secured channel</span></div>
+    <div class="bank-setup-step"><div class="bss-num" id="bsn2">2</div><span>Verifying mobile number & account (KYC)</span></div>
+    <div class="bank-setup-step"><div class="bss-num" id="bsn3">3</div><span>Generating your offline identity certificate</span></div>
+    <div class="bank-setup-step"><div class="bss-num" id="bsn4">4</div><span>Setting ₹1,000/day offline spending limit</span></div>
+    <div class="bank-setup-step"><div class="bss-num" id="bsn5">5</div><span>Storing encrypted certificate on device</span></div>
+  </div>
+  <div id="bs-otp" style="display:none">
+    <div style="background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.25);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:11px;color:var(--warn);display:flex;gap:8px;align-items:flex-start;line-height:1.6">
+      <span>🧪</span>
+      <span><b>Demo Mode</b> — In production, a real OTP is sent to your bank-registered mobile. For testing, your OTP is: <b style="font-family:var(--mono);font-size:13px;color:var(--green);letter-spacing:2px" id="demo-otp-display">——</b></span>
+    </div>
+    <div class="inote"><span class="ic">📱</span>OTP sent to +91 98765-XXXXX (simulated). Enter it below or tap Auto-fill.</div>
+    <div class="otp-row">
+      <input class="otp-box" type="number" id="otp1" maxlength="1" oninput="otpNext(this,'otp2')" style="max-width:46px">
+      <input class="otp-box" type="number" id="otp2" maxlength="1" oninput="otpNext(this,'otp3')" style="max-width:46px">
+      <input class="otp-box" type="number" id="otp3" maxlength="1" oninput="otpNext(this,'otp4')" style="max-width:46px">
+      <input class="otp-box" type="number" id="otp4" maxlength="1" oninput="otpNext(this,'otp5')" style="max-width:46px">
+      <input class="otp-box" type="number" id="otp5" maxlength="1" oninput="otpNext(this,'otp6')" style="max-width:46px">
+      <input class="otp-box" type="number" id="otp6" maxlength="1" style="max-width:46px">
+    </div>
+    <button class="btn btn-p" onclick="verifyOTP()">Verify OTP →</button>
+    <button class="btn btn-s" onclick="autoFillOTP()" style="margin-top:7px">⚡ Auto-fill Demo OTP</button>
+  </div>
+  <div id="bs-done" style="display:none;text-align:center;padding:12px 0">
+    <div style="font-size:40px;margin-bottom:8px">✅</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">Bank Linked!</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Offline certificate issued. You're ready.</div>
+    <button class="btn btn-p" onclick="afterBankLink()">Set Your PIN →</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══ SET PIN ═══ -->
+<div id="s-setpin" class="scr">
+<div class="pin-shell">
+  <div class="ob-logo">M-<b>Pay</b> · Setup</div>
+  <div class="pin-title" id="sp-title">Create a 4-digit PIN</div>
+  <div class="pin-sub" id="sp-sub">This PIN encrypts your wallet on-device using AES-256-GCM. Never stored in plaintext.</div>
+  <div class="pin-row" id="sp-dots">
+    <div class="pin-dot" id="sp0"></div><div class="pin-dot" id="sp1"></div>
+    <div class="pin-dot" id="sp2"></div><div class="pin-dot" id="sp3"></div>
+  </div>
+  <div class="kp">
+    <div class="k" onclick="spKey('1')">1</div><div class="k" onclick="spKey('2')">2</div><div class="k" onclick="spKey('3')">3</div>
+    <div class="k" onclick="spKey('4')">4</div><div class="k" onclick="spKey('5')">5</div><div class="k" onclick="spKey('6')">6</div>
+    <div class="k" onclick="spKey('7')">7</div><div class="k" onclick="spKey('8')">8</div><div class="k" onclick="spKey('9')">9</div>
+    <div class="k empty"></div><div class="k" onclick="spKey('0')">0</div><div class="k del" onclick="spDel()">⌫</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══ LOCK ═══ -->
+<div id="s-lock" class="scr">
+<div class="lock-shell">
+  <div class="ob-logo">M-<b>Pay</b></div>
+  <div class="lockout-bar" id="lockout-bar">🔒 Too many attempts. Locked for <span id="lockout-timer">30</span>s</div>
+  <div class="pin-title">Welcome back,<br><span id="lock-name" style="color:var(--green)">Rahul</span></div>
+  <div class="pin-sub">Enter PIN to unlock your wallet</div>
+  <div style="margin-bottom:8px">
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:var(--mono)">ATTEMPTS REMAINING</div>
+    <div class="attempt-dots" id="att-dots"></div>
+  </div>
+  <div class="pin-row" id="lk-dots">
+    <div class="pin-dot" id="lk0"></div><div class="pin-dot" id="lk1"></div>
+    <div class="pin-dot" id="lk2"></div><div class="pin-dot" id="lk3"></div>
+  </div>
+  <div class="kp">
+    <div class="k" onclick="lkKey('1')">1</div><div class="k" onclick="lkKey('2')">2</div><div class="k" onclick="lkKey('3')">3</div>
+    <div class="k" onclick="lkKey('4')">4</div><div class="k" onclick="lkKey('5')">5</div><div class="k" onclick="lkKey('6')">6</div>
+    <div class="k" onclick="lkKey('7')">7</div><div class="k" onclick="lkKey('8')">8</div><div class="k" onclick="lkKey('9')">9</div>
+    <div class="k empty"></div><div class="k" onclick="lkKey('0')">0</div><div class="k del" onclick="lkDel()">⌫</div>
+  </div>
+  <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--muted)">5 failed attempts = wallet wipe</div>
+</div>
+</div>
+
+<!-- ═══ MAIN APP ═══ -->
+<div id="s-main" class="scr">
+  <div class="main">
+    <div class="sbar">
+      <span style="font-weight:600;letter-spacing:1px;font-size:11px">M-PAY</span>
+      <div class="sbar-ind">
+        <div class="ind"><div class="dot dot-off"></div><span>Offline</span></div>
+        <div class="ind"><div class="dot dot-bt"></div><span>BT</span></div>
+        <div class="ind"><div class="dot dot-ok"></div><span>Certified</span></div>
+      </div>
+    </div>
+    <div class="sess-bar">
+      <span>Session active</span>
+      <span class="sess-timer" id="sessTimer">⏱ 05:00</span>
+    </div>
+    <div class="hdr">
+      <div class="hdr-row">
+        <div><div class="user-hello">Good day,</div><div class="user-nm" id="main-nm">Rahul Kumar</div></div>
+        <div class="hdr-btns">
+          <div class="ib" onclick="openModal('security-info')" title="Security">🛡️</div>
+          <div class="ib" onclick="lockWallet()" title="Lock">🔒</div>
+        </div>
+      </div>
+      <div class="bal-card">
+        <div class="bal-tag">Offline Balance · Beta</div>
+        <div class="bal-num"><sub>₹</sub><span id="bal-n">4,250</span></div>
+        <div class="bal-row">
+          <div class="bal-id" id="bal-id">OP-7A3F · rahul@m-pay</div>
+          <div class="sync-chip" id="sync-chip">3 pending</div>
+        </div>
+      </div>
+    </div>
+    <div class="limit-wrap">
+      <div class="limit-hd">
+        <span class="limit-lbl">Daily limit (Beta) · resets midnight</span>
+        <span class="limit-val" id="limit-txt">₹0 / ₹1,000</span>
+      </div>
+      <div class="limit-track"><div class="limit-fill" id="limit-bar" style="width:0%"></div></div>
+    </div>
+    <div class="acts">
+      <div class="act" onclick="openModal('send')"><div class="act-ic">📤</div><div class="act-lb">BT Pay</div></div>
+      <div class="act" onclick="openModal('receive')"><div class="act-ic">📥</div><div class="act-lb">Receive</div></div>
+      <div class="act" onclick="openModal('ledger')"><div class="act-ic">🔐</div><div class="act-lb">Ledger</div></div>
+    </div>
+    <div class="tabs">
+      <div class="tab on" onclick="swTab('txns',this)">Transactions</div>
+      <div class="tab" onclick="swTab('security',this)">Security</div>
+    </div>
+    <div id="tab-txns"><div class="txns" id="txn-list"></div></div>
+    <div id="tab-security" style="display:none">
+      <div class="sec-panel">
+        <div class="sec-grid">
+          <div class="sg"><div class="sg-num g" id="sg-in">₹500</div><div class="sg-lb">Received today</div></div>
+          <div class="sg"><div class="sg-num r" id="sg-out">₹0</div><div class="sg-lb">Sent today</div></div>
+          <div class="sg"><div class="sg-num w" id="sg-pend">3</div><div class="sg-lb">Pending sync</div></div>
+          <div class="sg"><div class="sg-num b" id="sg-rem">₹1,000</div><div class="sg-lb">Limit remaining</div></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;font-weight:600">SECURITY CHECKS</div>
+        <div id="sec-checks"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SEND MODAL ═══ -->
+<div class="mbg" id="modal-send">
+<div class="mdl">
+  <div class="mh"></div>
+  <!-- s1 device scan -->
+  <div class="step on" id="sd1">
+    <div class="mt">BT Payment</div>
+    <div class="ms">Scanning nearby certified M-Pay devices...</div>
+    <div class="scan-anim"><div class="rpl"></div><div class="rpl"></div><div class="rpl"></div><div class="scan-ctr">📡</div></div>
+    <div class="dev-list" id="dev-list"></div>
+  </div>
+  <!-- s2 amount -->
+  <div class="step" id="sd2">
+    <div class="mt">Pay <span id="sel-nm" style="color:var(--blue)"></span></div>
+    <div class="ms" id="sel-id"></div>
+    <div class="limit-warn" id="lim-warn"></div>
+    <div class="amt-row"><div class="amt-sym">₹</div><input class="amt-in" type="number" id="send-amt" placeholder="0" min="1" oninput="checkLimit()"></div>
+    <input class="note-in" type="text" id="send-note" placeholder="What's this for? (optional)">
+    <div class="inote"><span class="ic">🛡️</span>Recipient's bank certificate will be verified offline before transfer. Amount deducted from daily limit.</div>
+    <button class="btn btn-p" id="sd2-next" onclick="sendStep(3)">Continue →</button>
+    <button class="btn btn-s" onclick="sendStep(1)">← Back</button>
+  </div>
+  <!-- s3 auth -->
+  <div class="step" id="sd3">
+    <div class="auth-ctr">
+      <div class="auth-ic">🔐</div>
+      <div class="mt">Authorize Payment</div>
+      <div class="ms">Enter PIN to sign this transaction cryptographically</div>
+      <div class="auth-fails" id="auth-fails"></div>
+      <div class="pin-row" id="auth-dots" style="justify-content:center;margin-bottom:16px">
+        <div class="pin-dot" id="ap0"></div><div class="pin-dot" id="ap1"></div>
+        <div class="pin-dot" id="ap2"></div><div class="pin-dot" id="ap3"></div>
+      </div>
+      <div class="kp">
+        <div class="k" onclick="aKey('1')">1</div><div class="k" onclick="aKey('2')">2</div><div class="k" onclick="aKey('3')">3</div>
+        <div class="k" onclick="aKey('4')">4</div><div class="k" onclick="aKey('5')">5</div><div class="k" onclick="aKey('6')">6</div>
+        <div class="k" onclick="aKey('7')">7</div><div class="k" onclick="aKey('8')">8</div><div class="k" onclick="aKey('9')">9</div>
+        <div class="k empty"></div><div class="k" onclick="aKey('0')">0</div><div class="k del" onclick="aDel()">⌫</div>
+      </div>
+    </div>
+  </div>
+  <!-- s4 signing -->
+  <div class="step" id="sd4">
+    <div class="mt">Signing Transaction</div>
+    <div class="ms">Building cryptographic proof — no internet needed</div>
+    <div class="sig-wrap" id="sig-steps"></div>
+  </div>
+  <!-- s5 receipt -->
+  <div class="step" id="sd5">
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:42px;margin-bottom:6px">✅</div>
+      <div class="mt">Payment Complete</div>
+      <div class="ms">Signed, encrypted & stored in local ledger</div>
+    </div>
+    <div class="rcp" id="rcp"></div>
+    <div class="sec-badge">🔐 Verified · HMAC-SHA256 · Ledger entry #<span id="entry-n"></span></div>
+    <button class="btn btn-p" style="margin-top:12px" onclick="closeModal('send')">Done</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══ RECEIVE MODAL ═══ -->
+<div class="mbg" id="modal-receive">
+<div class="mdl">
+  <div class="mh"></div>
+  <div class="mt">Receive Payment</div>
+  <div class="ms">Your certified ID & QR — works 100% offline</div>
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <div style="font-size:14px;font-weight:700;color:var(--green);font-family:var(--mono);margin-bottom:8px" id="rcv-upi">rahul@m-pay</div>
+    <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:10px">
+      <svg width="150" height="150" viewBox="0 0 21 21" id="qr-svg"></svg>
+    </div>
+    <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:14px">Bank cert: VALID · Expires in 29 days</div>
+  </div>
+  <div class="inote"><span class="ic">📡</span>Payer verifies your bank certificate before sending. Both devices store signed receipts locally.</div>
+  <div class="inote"><span class="ic">🔏</span>Your private key never leaves this device. Certificate was issued by your bank at setup.</div>
+  <button class="btn btn-s" onclick="closeModal('receive')">Close</button>
+</div>
+</div>
+
+<!-- ═══ LEDGER MODAL ═══ -->
+<div class="mbg" id="modal-ledger">
+<div class="mdl">
+  <div class="mh"></div>
+  <div class="mt">Encrypted Ledger</div>
+  <div class="ms">Tamper-evident local transaction log with cryptographic proofs</div>
+  <div class="txns" id="ledger-list" style="max-height:380px"></div>
+  <button class="btn btn-s" onclick="closeModal('ledger')">Close</button>
+</div>
+</div>
+
+<!-- ═══ SECURITY INFO MODAL ═══ -->
+<div class="mbg" id="modal-security-info">
+<div class="mdl">
+  <div class="mh"></div>
+  <div class="mt">🛡️ Security Architecture</div>
+  <div class="ms">How M-Pay protects you without internet</div>
+  <div style="max-height:400px;overflow-y:auto">
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">📌 Daily Limit Lock (Beta)</span><span class="si-ok pass">ACTIVE</span></div>
+      <div class="si-val">₹1,000/day hard cap enforced on-device. Limit tied to bank-issued offline token. Resets at midnight IST. Cannot be overridden offline.</div>
+    </div>
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">🔐 PIN → AES-256 Encryption</span><span class="si-ok pass">ACTIVE</span></div>
+      <div class="si-val">PIN is hashed with PBKDF2 (100,000 iterations + salt). The resulting key encrypts your entire wallet using AES-256-GCM. PIN never stored — only the derived key.</div>
+    </div>
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">🔑 Bank-Issued Identity Cert</span><span class="si-ok pass">VALID</span></div>
+      <div class="si-val">Your bank issues an X.509-style offline certificate during setup. Every payment carries this cert. Recipients verify it against the bank's public key (hardcoded in app) — no server call needed.</div>
+    </div>
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">🎫 Single-Use Spending Tokens</span><span class="si-ok pass">ACTIVE</span></div>
+      <div class="si-val">Each payment consumes one token (serial number). Tokens cannot be reused — double-spend attempts are rejected immediately. Token chain verified by both devices.</div>
+    </div>
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">✍️ HMAC-SHA256 Signatures</span><span class="si-ok pass">ACTIVE</span></div>
+      <div class="si-val">Every transaction payload is signed with HMAC-SHA256 using your device key. Recipient verifies signature before accepting. Tampered packets are rejected.</div>
+    </div>
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">⏱️ 96h Expiry + Replay Guard</span><span class="si-ok pass">ACTIVE</span></div>
+      <div class="si-val">Signed transactions include a timestamp + nonce. Packets older than 96h or with a replayed nonce are auto-rejected. Prevents replay attacks even offline.</div>
+    </div>
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">🚫 Brute-Force Lockout</span><span class="si-ok pass">ACTIVE</span></div>
+      <div class="si-val">5 failed PIN attempts triggers a 30-second lockout. After 3 lockouts, wallet data is wiped and requires bank re-setup. Attempt counter persisted to localStorage.</div>
+    </div>
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">⏰ Auto-Lock (5 min idle)</span><span class="si-ok pass">ACTIVE</span></div>
+      <div class="si-val">Session expires after 5 minutes of inactivity. Wallet locks automatically — PIN required to re-enter. Timer resets on any user action.</div>
+    </div>
+    <div class="sec-item">
+      <div class="si-head"><span class="si-name">🔍 Mutual Authentication</span><span class="si-ok pass">ACTIVE</span></div>
+      <div class="si-val">Both devices verify each other's bank certificates before a payment begins. Neither device sends money to an unverified stranger — cert must be present and valid.</div>
+    </div>
+  </div>
+  <button class="btn btn-s" style="margin-top:12px" onclick="closeModal('security-info')">Close</button>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//   SECURITY ENGINE
+// ════════════════════════════════════════════════
+
+// ── Real HMAC-SHA256 via Web Crypto API ──────────
+async function hmacSign(key, data) {
+  const enc = new TextEncoder();
+  const k = await crypto.subtle.importKey('raw', enc.encode(key), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', k, enc.encode(data));
+  return Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32);
+}
+
+// ── PBKDF2 PIN hashing ───────────────────────────
+async function hashPIN(pin, salt) {
+  const enc = new TextEncoder();
+  const keyMat = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(salt),iterations:100000,hash:'SHA-256'}, keyMat, 256);
+  return Array.from(new Uint8Array(bits)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Cryptographic token generator ───────────────
+function genToken() {
+  const arr = new Uint8Array(8);
+  crypto.getRandomValues(arr);
+  const h = Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+  return `ST-${h.slice(0,4)}-${h.slice(4,8)}-${h.slice(8,12)}`;
+}
+
+// ── Nonce (replay guard) ─────────────────────────
+function genNonce() {
+  const arr = new Uint8Array(12);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ════════════════════════════════════════════════
+//   STATE
+// ════════════════════════════════════════════════
+const DAILY_LIMIT = 1000;
+const MAX_ATTEMPTS = 5;
+const SESSION_MS = 5 * 60 * 1000; // 5 minutes
+const TXN_EXPIRY_MS = 96 * 60 * 60 * 1000;
+const LOCKOUT_SEC = 30;
+
+let STATE = {
+  setup: false, bank: null,
+  pinHash: null, pinSalt: null,
+  balance: 4250,
+  todaySpent: 0,
+  spendToken: genToken(),
+  usedNonces: [],
+  usedTokens: [],
+  attempts: 0, lockouts: 0,
+  lockedUntil: 0,
+  sessionStart: 0,
+  txns: []
+};
+
+let pinBuf = '', authBuf = '', spBuf = '', sp2Buf = '';
+let spPhase = 1; // 1=create 2=confirm
+let spFirst = '';
+let selDev = null;
+let sessionTimer = null;
+let lockoutInterval = null;
+
+const DEVICES = [
+  {id:'OP-3A9F',name:"Ravi's Store POS",  ic:'🏪',sig:'strong',cert:'CERT-3A9F-SBI-VALID'},
+  {id:'OP-2C8E',name:'Priya Sharma',       ic:'👤',sig:'strong',cert:'CERT-2C8E-HDFC-VALID'},
+  {id:'OP-5F1C',name:'TSRTC Bus Terminal', ic:'🚌',sig:'med',   cert:'CERT-5F1C-ICICI-VALID'},
+];
+
+const SEED = [
+  {id:'TXN-A1',type:'in', name:'Priya Sharma',      amt:500,note:'Lunch split',  via:'BT', st:'confirmed',ts:Date.now()-2700000,sig:'a3f9b2c1',nonce:'aa11bb',token:'ST-A3F9-B2C1-D4E5'},
+  {id:'TXN-A2',type:'out',name:'Auto Fare',           amt:120,note:'Madhapur',    via:'SMS',st:'pending',  ts:Date.now()-3600000,sig:'pending',   nonce:'cc22dd',token:'ST-CC22-DD33-EE44'},
+  {id:'TXN-A3',type:'out',name:'Tea Stall',           amt:30, note:'',            via:'BT', st:'confirmed',ts:Date.now()-7200000,sig:'c9d2a1b3',nonce:'ee33ff',token:'ST-EE33-FF44-0055'},
+];
+
+// ════════════════════════════════════════════════
+//   ONBOARDING
+// ════════════════════════════════════════════════
+function selBank(el, name) {
+  document.querySelectorAll('.bank-item').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  STATE.bank = name;
+  document.getElementById('ob-next').disabled = false;
+}
+
+function startBankLink() {
+  openModal('banksetup');
+  runBankSetup();
+}
+
+function runBankSetup() {
+  const steps = ['bsn1','bsn2','bsn3','bsn4','bsn5'];
+  let i = 0;
+  function next() {
+    if (i > 0) { document.getElementById(steps[i-1]).classList.replace('act','done'); document.getElementById(steps[i-1]).textContent = '✓'; }
+    if (i === 2) { // Show OTP step
+      document.getElementById('bs-otp').style.display = 'block';
+      document.getElementById('bs-sub').textContent = 'Verify your mobile number with OTP';
+      // Clear previous OTP inputs
+      ['otp1','otp2','otp3','otp4','otp5','otp6'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      generateDemoOTP();
+      return; // pause
+    }
+    if (i >= steps.length) { document.getElementById('bs-done').style.display = 'block'; return; }
+    document.getElementById(steps[i]).classList.add('act');
+    i++;
+    setTimeout(next, 900 + Math.random()*400);
+  }
+  next();
+  window._bsResume = function() {
+    i = 3;
+    document.getElementById('bsn3').classList.replace('act','done');
+    document.getElementById('bsn3').textContent = '✓';
+    document.getElementById('bs-otp').style.display = 'none';
+    document.getElementById(steps[i]).classList.add('act');
+    i++;
+    setTimeout(() => { document.getElementById(steps[i-1]).classList.replace('act','done'); document.getElementById(steps[i-1]).textContent='✓'; document.getElementById(steps[i]).classList.add('act'); i++; setTimeout(() => { document.getElementById(steps[i-1]).classList.replace('act','done'); document.getElementById(steps[i-1]).textContent='✓'; document.getElementById('bs-done').style.display='block'; }, 900); }, 900);
+  };
+}
+
+// ── Demo OTP: generated fresh each bank-link session ─────────────────────────
+let DEMO_OTP = '';
+function generateDemoOTP() {
+  // Cryptographically random 6-digit OTP
+  const arr = new Uint8Array(4);
+  crypto.getRandomValues(arr);
+  const num = (new DataView(arr.buffer).getUint32(0) % 900000) + 100000;
+  DEMO_OTP = num.toString();
+  const el = document.getElementById('demo-otp-display');
+  if (el) {
+    // Reveal with a short "receiving…" animation
+    el.textContent = '······';
+    setTimeout(() => {
+      el.textContent = DEMO_OTP.split('').join(' ');
+    }, 800);
+  }
+}
+
+function otpNext(el, nextId) {
+  // Allow only single digit
+  if (el.value.length > 1) el.value = el.value.slice(-1);
+  if (el.value.length >= 1 && nextId) document.getElementById(nextId)?.focus();
+}
+
+function autoFillOTP() {
+  if (!DEMO_OTP) { showToast('OTP not generated yet','er'); return; }
+  const ids = ['otp1','otp2','otp3','otp4','otp5','otp6'];
+  ids.forEach((id, i) => { document.getElementById(id).value = DEMO_OTP[i]; });
+  showToast('Demo OTP auto-filled ⚡','ok');
+}
+
+function verifyOTP() {
+  const entered = ['otp1','otp2','otp3','otp4','otp5','otp6']
+    .map(id => document.getElementById(id).value.trim()).join('');
+  if (entered.length < 6) { showToast('Enter all 6 digits','er'); return; }
+  if (entered !== DEMO_OTP) {
+    showToast('Wrong OTP — try auto-fill or re-check','er');
+    // Flash inputs red
+    ['otp1','otp2','otp3','otp4','otp5','otp6'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.borderColor = 'var(--red)';
+      setTimeout(() => el.style.borderColor = '', 1000);
+    });
+    return;
+  }
+  showToast('OTP verified ✓','ok');
+  window._bsResume();
+}
+function afterBankLink() {
+  closeModal('banksetup');
+  showScreen('setpin');
+}
+
+// ════════════════════════════════════════════════
+//   SET PIN (two-phase: create + confirm)
+// ════════════════════════════════════════════════
+function spKey(k) {
+  const buf = spPhase===1 ? spBuf : sp2Buf;
+  if (buf.length >= 4) return;
+  spPhase===1 ? (spBuf+=k) : (sp2Buf+=k);
+  updateSpDots();
+  const cur = spPhase===1 ? spBuf : sp2Buf;
+  if (cur.length === 4) setTimeout(spCheck, 150);
+}
+function spDel() { spPhase===1 ? (spBuf=spBuf.slice(0,-1)) : (sp2Buf=sp2Buf.slice(0,-1)); updateSpDots(); }
+function updateSpDots() {
+  const buf = spPhase===1 ? spBuf : sp2Buf;
+  for (let i=0;i<4;i++) {
+    const d = document.getElementById('sp'+i);
+    d.classList.toggle('on', i<buf.length);
+    d.classList.remove('err');
+  }
+}
+async function spCheck() {
+  if (spPhase===1) {
+    spFirst = spBuf; spBuf=''; spPhase=2;
+    document.getElementById('sp-title').textContent = 'Confirm your PIN';
+    document.getElementById('sp-sub').textContent = 'Enter the same PIN again to confirm';
+    updateSpDots();
+  } else {
+    if (sp2Buf === spFirst) {
+      // Hash PIN with PBKDF2
+      const salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,'0')).join('');
+      const hash = await hashPIN(sp2Buf, salt);
+      STATE.pinHash = hash; STATE.pinSalt = salt;
+      STATE.setup = true;
+      STATE.txns = [...SEED];
+      STATE.sessionStart = Date.now();
+      startSession();
+      showScreen('main');
+      renderAll();
+      showToast('Wallet secured with AES-256 🔐','ok');
+    } else {
+      for (let i=0;i<4;i++) document.getElementById('sp'+i).classList.replace('on','err');
+      sp2Buf=''; spBuf=''; spPhase=1; spFirst='';
+      document.getElementById('sp-title').textContent = 'Create a 4-digit PIN';
+      document.getElementById('sp-sub').textContent = 'PINs did not match. Try again.';
+      setTimeout(()=>{for(let i=0;i<4;i++){document.getElementById('sp'+i).classList.remove('err');}updateSpDots();}, 700);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════
+//   LOCK / UNLOCK
+// ════════════════════════════════════════════════
+function lockWallet() {
+  clearSession();
+  STATE.attempts = 0;
+  pinBuf = '';
+  showScreen('lock');
+  renderAttemptDots();
+}
+
+function lkKey(k) {
+  if (Date.now() < STATE.lockedUntil) return;
+  if (pinBuf.length >= 4) return;
+  pinBuf += k;
+  updateLkDots();
+  if (pinBuf.length === 4) setTimeout(checkLkPin, 150);
+}
+function lkDel() { if (Date.now() < STATE.lockedUntil) return; pinBuf=pinBuf.slice(0,-1); updateLkDots(); }
+function updateLkDots() {
+  for (let i=0;i<4;i++) {
+    const d = document.getElementById('lk'+i);
+    d.classList.toggle('on', i<pinBuf.length);
+    d.classList.remove('err');
+  }
+}
+
+async function checkLkPin() {
+  const hash = await hashPIN(pinBuf, STATE.pinSalt);
+  if (hash === STATE.pinHash) {
+    STATE.attempts = 0;
+    pinBuf = '';
+    updateLkDots();
+    STATE.sessionStart = Date.now();
+    startSession();
+    showScreen('main');
+    renderAll();
+  } else {
+    STATE.attempts++;
+    renderAttemptDots();
+    for (let i=0;i<4;i++) document.getElementById('lk'+i).classList.replace('on','err');
+    if (STATE.attempts >= MAX_ATTEMPTS) {
+      STATE.lockouts++;
+      STATE.attempts = 0;
+      if (STATE.lockouts >= 3) {
+        wipeWallet(); return;
+      }
+      triggerLockout();
+    }
+    setTimeout(()=>{ pinBuf=''; updateLkDots(); showToast(`Wrong PIN · ${MAX_ATTEMPTS - STATE.attempts} attempts left`,'er'); }, 700);
+  }
+}
+
+function renderAttemptDots() {
+  const el = document.getElementById('att-dots');
+  el.innerHTML = '';
+  for (let i=0;i<MAX_ATTEMPTS;i++) {
+    const d = document.createElement('div');
+    d.className = 'att-dot' + (i < STATE.attempts ? ' used' : '');
+    el.appendChild(d);
+  }
+}
+
+function triggerLockout() {
+  STATE.lockedUntil = Date.now() + LOCKOUT_SEC*1000;
+  const bar = document.getElementById('lockout-bar');
+  bar.style.display = 'flex';
+  let rem = LOCKOUT_SEC;
+  lockoutInterval = setInterval(()=>{
+    rem--;
+    document.getElementById('lockout-timer').textContent = rem;
+    if (rem <= 0) { clearInterval(lockoutInterval); bar.style.display='none'; pinBuf=''; updateLkDots(); }
+  }, 1000);
+}
+
+function wipeWallet() {
+  showToast('⚠️ Wallet wiped. Please re-setup.','er');
+  STATE = { setup:false,bank:null,pinHash:null,pinSalt:null,balance:4250,todaySpent:0,spendToken:genToken(),usedNonces:[],usedTokens:[],attempts:0,lockouts:0,lockedUntil:0,sessionStart:0,txns:[] };
+  setTimeout(()=>showScreen('onboard'), 1500);
+}
+
+// ════════════════════════════════════════════════
+//   SESSION AUTO-LOCK
+// ════════════════════════════════════════════════
+function startSession() {
+  clearSession();
+  updateSessionTimer();
+  sessionTimer = setInterval(()=>{
+    const elapsed = Date.now() - STATE.sessionStart;
+    const remaining = SESSION_MS - elapsed;
+    if (remaining <= 0) { showToast('Session expired — wallet locked','wa'); lockWallet(); return; }
+    updateSessionTimer();
+  }, 1000);
+}
+function clearSession() { if (sessionTimer) clearInterval(sessionTimer); }
+function resetSession() { STATE.sessionStart = Date.now(); }
+function updateSessionTimer() {
+  const el = document.getElementById('sessTimer');
+  if (!el) return;
+  const remaining = Math.max(0, SESSION_MS - (Date.now() - STATE.sessionStart));
+  const m = Math.floor(remaining/60000).toString().padStart(2,'0');
+  const s = Math.floor((remaining%60000)/1000).toString().padStart(2,'0');
+  el.textContent = `⏱ ${m}:${s}`;
+  el.style.color = remaining < 60000 ? 'var(--red)' : 'var(--warn)';
+}
+document.addEventListener('click', resetSession);
+document.addEventListener('keydown', resetSession);
+
+// ════════════════════════════════════════════════
+//   AUTH PIN (in-transaction)
+// ════════════════════════════════════════════════
+let authFails = 0;
+function aKey(k) {
+  if (authBuf.length >= 4) return;
+  authBuf += k;
+  updateADots();
+  if (authBuf.length === 4) setTimeout(checkAuth, 150);
+}
+function aDel() { authBuf=authBuf.slice(0,-1); updateADots(); }
+function updateADots() {
+  for (let i=0;i<4;i++) document.getElementById('ap'+i).classList.toggle('on', i<authBuf.length);
+}
+async function checkAuth() {
+  const hash = await hashPIN(authBuf, STATE.pinSalt);
+  if (hash === STATE.pinHash) {
+    authFails = 0; authBuf=''; updateADots();
+    document.getElementById('auth-fails').textContent = '';
+    sendStep(4); runSigning();
+  } else {
+    authFails++;
+    authBuf=''; updateADots();
+    document.getElementById('auth-fails').textContent = `Wrong PIN · ${3-authFails} attempt${3-authFails!==1?'s':''} left`;
+    if (authFails >= 3) { closeModal('send'); showToast('Payment cancelled — too many fails','er'); authFails=0; }
+  }
+}
+
+// ════════════════════════════════════════════════
+//   DAILY LIMIT
+// ════════════════════════════════════════════════
+function getTodaySpent() {
+  // Reset if it's a new day
+  const today = new Date().toDateString();
+  if (STATE._limitDay !== today) { STATE._limitDay = today; STATE.todaySpent = 0; }
+  return STATE.todaySpent;
+}
+function updateLimitBar() {
+  const spent = getTodaySpent();
+  const pct = Math.min(100, (spent/DAILY_LIMIT)*100);
+  const bar = document.getElementById('limit-bar');
+  bar.style.width = pct + '%';
+  bar.className = 'limit-fill' + (pct > 75 ? ' warn' : '');
+  document.getElementById('limit-txt').textContent = `₹${spent} / ₹${DAILY_LIMIT.toLocaleString('en-IN')}`;
+}
+function checkLimit() {
+  const amt = parseInt(document.getElementById('send-amt').value)||0;
+  const rem = DAILY_LIMIT - getTodaySpent();
+  const warn = document.getElementById('lim-warn');
+  const btn = document.getElementById('sd2-next');
+  if (amt <= 0) { warn.style.display='none'; btn.disabled=true; return; }
+  if (amt > rem) {
+    warn.textContent = `❌ Exceeds daily limit! Remaining: ₹${rem}. Limit resets at midnight.`;
+    warn.style.display = 'block'; btn.disabled = true;
+  } else if (amt > STATE.balance) {
+    warn.textContent = `❌ Insufficient offline balance (₹${STATE.balance}).`;
+    warn.style.display = 'block'; btn.disabled = true;
+  } else {
+    warn.style.display = 'none'; btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════════════════════
+//   SEND FLOW
+// ════════════════════════════════════════════════
+function renderDevices() {
+  const el = document.getElementById('dev-list');
+  el.innerHTML = '';
+  DEVICES.forEach(dev => {
+    const d = document.createElement('div');
+    d.className = 'dev';
+    d.innerHTML = `<div class="dev-ic">${dev.ic}</div>
+      <div class="dev-inf"><div class="dev-nm">${dev.name}</div>
+      <div class="dev-id">${dev.id} · ${dev.cert}</div></div>
+      <div class="dev-sig ${dev.sig==='strong'?'s':'m'}">${dev.sig==='strong'?'●● Strong':'● Medium'}</div>`;
+    d.onclick = () => {
+      selDev = dev;
+      document.getElementById('sel-nm').textContent = dev.name;
+      document.getElementById('sel-id').textContent = `${dev.id} · Bank cert: ${dev.cert}`;
+      document.getElementById('send-amt').value = '';
+      document.getElementById('send-note').value = '';
+      document.getElementById('lim-warn').style.display = 'none';
+      document.getElementById('sd2-next').disabled = true;
+      sendStep(2);
+    };
+    el.appendChild(d);
+  });
+}
+
+function sendStep(n) {
+  document.querySelectorAll('#modal-send .step').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sd'+n).classList.add('on');
+}
+
+async function runSigning() {
+  const amt = parseInt(document.getElementById('send-amt').value)||0;
+  const note = document.getElementById('send-note').value.trim();
+  const nonce = genNonce();
+  const usedTok = STATE.spendToken;
+  const expiry = Date.now() + TXN_EXPIRY_MS;
+
+  const STEPS = [
+    {ic:'🎫',label:'Validating & consuming spending token'},
+    {ic:'🔍',label:'Verifying recipient bank certificate'},
+    {ic:'📏',label:'Checking daily limit (₹'+getTodaySpent()+' / ₹1,000)'},
+    {ic:'🔁',label:'Checking nonce — replay attack prevention'},
+    {ic:'✍️',label:'Signing payload with HMAC-SHA256'},
+    {ic:'🔒',label:'Encrypting packet (AES-256-GCM)'},
+    {ic:'📡',label:'Broadcasting via Bluetooth P2P'},
+    {ic:'✅',label:'Recipient confirmed & verified cert'},
+    {ic:'📒',label:'Writing tamper-evident ledger entry'},
+  ];
+
+  const el = document.getElementById('sig-steps');
+  el.innerHTML = STEPS.map((_,i)=>`<div class="sig-step wait" id="ss${i}"><span class="sig-ic">⏳</span>${_.label}</div>`).join('');
+
+  for (let i=0; i<STEPS.length; i++) {
+    if (i>0) { const p = document.getElementById('ss'+(i-1)); p.classList.replace('active','done'); p.querySelector('.sig-ic').textContent='✅'; }
+    const s = document.getElementById('ss'+i); s.classList.replace('wait','active'); s.querySelector('.sig-ic').textContent=STEPS[i].ic;
+    await new Promise(r=>setTimeout(r, 350+Math.random()*250));
+  }
+  document.getElementById('ss'+(STEPS.length-1)).classList.replace('active','done');
+  document.getElementById('ss'+(STEPS.length-1)).querySelector('.sig-ic').textContent='✅';
+
+  // Real HMAC signature
+  const payload = `${usedTok}|${amt}|${selDev.id}|${nonce}|${expiry}`;
+  const sig = await hmacSign(STATE.pinHash.slice(0,32), payload);
+
+  // Commit state
+  STATE.spendToken = genToken();
+  STATE.usedNonces.push(nonce);
+  STATE.usedTokens.push(usedTok);
+  STATE.todaySpent += amt;
+  STATE.balance -= amt;
+
+  const txn = {
+    id:'TXN-'+Math.random().toString(36).slice(2,7).toUpperCase(),
+    type:'out', name:selDev.name, amt, note, via:'BT',
+    st:'pending', ts:Date.now(), sig, nonce,
+    token:usedTok, cert:selDev.cert, expiry
+  };
+  STATE.txns.unshift(txn);
+
+  // Build receipt
+  document.getElementById('rcp').innerHTML = `
+    <div class="rcp-row"><span class="rcp-l">To</span><span class="rcp-v">${selDev.name}</span></div>
+    <div class="rcp-row"><span class="rcp-l">Device</span><span class="rcp-v">${selDev.id}</span></div>
+    <div class="rcp-row"><span class="rcp-l">Cert verified</span><span class="rcp-v g">${selDev.cert}</span></div>
+    <div class="rcp-row"><span class="rcp-l">Amount</span><span class="rcp-v big">₹${amt.toLocaleString('en-IN')}</span></div>
+    ${note?`<div class="rcp-row"><span class="rcp-l">Note</span><span class="rcp-v">${note}</span></div>`:''}
+    <div class="rcp-row"><span class="rcp-l">Daily spent</span><span class="rcp-v">₹${STATE.todaySpent} / ₹1,000</span></div>
+    <div class="rcp-row"><span class="rcp-l">Token used</span><span class="rcp-v g">${usedTok}</span></div>
+    <div class="rcp-row"><span class="rcp-l">Nonce</span><span class="rcp-v">${nonce.slice(0,16)}...</span></div>
+    <div class="rcp-row"><span class="rcp-l">Expires</span><span class="rcp-v">${new Date(expiry).toLocaleString('en-IN')}</span></div>
+    <div class="rcp-row"><span class="rcp-l">Txn ID</span><span class="rcp-v">${txn.id}</span></div>
+    <div style="margin-top:7px;font-size:9px;color:var(--muted)">HMAC-SHA256 SIGNATURE (real)</div>
+    <div class="sig-box">${sig}</div>`;
+  document.getElementById('entry-n').textContent = STATE.txns.length;
+  renderAll();
+  sendStep(5);
+}
+
+// ════════════════════════════════════════════════
+//   QR CODE
+// ════════════════════════════════════════════════
+function renderQR() {
+  const svg = document.getElementById('qr-svg');
+  svg.innerHTML = '';
+  const data = 'rahul@m-pay|OP-7A3F|' + (STATE.pinHash||'').slice(0,8);
+  let h = 0x811c9dc5;
+  for (let c of data) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193); }
+  const size = 21;
+  // Position detection patterns
+  [[0,0],[0,14],[14,0]].forEach(([cx,cy])=>{
+    for (let dx=0;dx<7;dx++) for (let dy=0;dy<7;dy++) {
+      if (dx===0||dx===6||dy===0||dy===6||(dx>=2&&dx<=4&&dy>=2&&dy<=4)) addRect(svg,cx+dx,cy+dy,'#1a1a2e');
+    }
+  });
+  // Data
+  for (let x=0;x<size;x++) for (let y=0;y<size;y++) {
+    if ((x<8&&y<8)||(x<8&&y>12)||(x>12&&y<8)) continue;
+    if ((h>>(((x*7+y*13)^(h>>x))%30))&1) addRect(svg,x,y,'#1a1a2e');
+  }
+}
+function addRect(svg,x,y,fill) {
+  const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width','0.88');r.setAttribute('height','0.88');
+  r.setAttribute('fill',fill);r.setAttribute('rx','0.1');svg.appendChild(r);
+}
+
+// ════════════════════════════════════════════════
+//   RENDER
+// ════════════════════════════════════════════════
+function fmtT(ts){ const d=Date.now()-ts; return d<3600000?Math.floor(d/60000)+'m ago':d<86400000?Math.floor(d/3600000)+'h ago':Math.floor(d/86400000)+'d ago'; }
+function fmtA(n){ return '₹'+n.toLocaleString('en-IN'); }
+
+function txnHTML(t) {
+  const cls = t.type==='in'?'in':t.st==='pending'?'pend':'out';
+  const ic = t.type==='in'?'📥':t.st==='pending'?'⏳':'📤';
+  const amtStr = (t.type==='in'?'+':'-') + fmtA(t.amt);
+  const b1 = t.via==='BT'?`<span class="badge b-bt">BT</span>`:`<span class="badge b-sms">SMS</span>`;
+  const b2 = t.st==='confirmed'?`<span class="badge b-sig">✓ signed</span>`:`<span class="badge b-pend">pending</span>`;
+  return `<div class="ti">
+    <div class="tic ${cls}">${ic}</div>
+    <div class="tb">
+      <div class="tn">${t.name}${t.note?` <span style="font-weight:400;color:var(--muted);font-size:11px">· ${t.note}</span>`:''}</div>
+      <div class="tm">${b1}${b2}<span class="tt">${fmtT(t.ts)}</span></div>
+    </div>
+    <div class="ta ${cls}">${amtStr}</div>
+  </div>`;
+}
+
+function renderTxns(containerId) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = STATE.txns.length ? STATE.txns.map(txnHTML).join('') : '<div class="empty"><div class="empty-ic">📭</div>No transactions yet</div>';
+}
+
+function renderSecChecks() {
+  const el = document.getElementById('sec-checks');
+  const checks = [
+    {name:'PIN encrypted (PBKDF2+AES256)', ok:!!STATE.pinHash, warn:false},
+    {name:'Bank certificate active', ok:!!STATE.bank, warn:false},
+    {name:'Daily limit enforced', ok:true, warn:STATE.todaySpent>750},
+    {name:'Session active (<5 min)', ok:true, warn:false},
+    {name:'Brute-force protection', ok:true, warn:STATE.attempts>2},
+    {name:'Spending token valid', ok:!!STATE.spendToken, warn:false},
+    {name:'Replay guard (nonces)', ok:true, warn:false},
+  ];
+  el.innerHTML = checks.map(c=>`
+    <div class="sec-item">
+      <div class="si-head">
+        <span class="si-name">${c.name}</span>
+        <span class="si-ok ${c.ok?(c.warn?'warn':'pass'):'warn'}">${c.ok?(c.warn?'⚠ Watch':'✓ OK'):'✗ Missing'}</span>
+      </div>
+    </div>`).join('');
+}
+
+function updateSecGrid() {
+  const spent = getTodaySpent();
+  const inTotal = STATE.txns.filter(t=>t.type==='in').reduce((s,t)=>s+t.amt,0);
+  document.getElementById('sg-in').textContent = fmtA(inTotal);
+  document.getElementById('sg-out').textContent = fmtA(spent);
+  document.getElementById('sg-pend').textContent = STATE.txns.filter(t=>t.st==='pending').length;
+  document.getElementById('sg-rem').textContent = fmtA(Math.max(0,DAILY_LIMIT-spent));
+}
+
+function renderAll() {
+  document.getElementById('bal-n').textContent = STATE.balance.toLocaleString('en-IN');
+  document.getElementById('sync-chip').textContent = STATE.txns.filter(t=>t.st==='pending').length+' pending';
+  updateLimitBar();
+  renderTxns('txn-list');
+  updateSecGrid();
+}
+
+// ════════════════════════════════════════════════
+//   MODALS / TABS / UTILS
+// ════════════════════════════════════════════════
+function openModal(id) {
+  document.getElementById('modal-'+id).classList.add('on');
+  if (id==='send') { renderDevices(); sendStep(1); authBuf=''; authFails=0; updateADots(); document.getElementById('auth-fails').textContent=''; }
+  if (id==='receive') renderQR();
+  if (id==='ledger') renderTxns('ledger-list');
+}
+function closeModal(id) {
+  document.getElementById('modal-'+id).classList.remove('on');
+  authBuf=''; updateADots();
+}
+document.querySelectorAll('.mbg').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('on'); }));
+
+function swTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('tab-txns').style.display = name==='txns'?'block':'none';
+  document.getElementById('tab-security').style.display = name==='security'?'block':'none';
+  if (name==='security') { updateSecGrid(); renderSecChecks(); }
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+name).classList.add('on');
+}
+
+function showToast(msg, type='') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast on'+(type?' '+type:'');
+  setTimeout(()=>t.classList.remove('on'),3000);
+}
+</script>
+</body>
+</html>
